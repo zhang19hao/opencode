@@ -65,7 +65,8 @@ async function input(value?: string) {
 }
 
 export const TuiThreadCommand = cmd({
-  command: "$0 [project]",
+  command: "cli [project]",
+  aliases: ["tui"],
   describe: "start opencode tui",
   builder: (yargs) =>
     withNetworkOptions(yargs)
