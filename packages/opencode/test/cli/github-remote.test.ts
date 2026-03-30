@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test"
-import { parseGitHubRemote } from "../../src/cli/cmd/github"
+import { parseGitHubRemote, parseGitHubRepo } from "../../src/cli/cmd/github"
 
 test("parses https URL with .git suffix", () => {
   expect(parseGitHubRemote("https://github.com/sst/opencode.git")).toEqual({ owner: "sst", repo: "opencode" })
@@ -77,4 +77,16 @@ test("returns null for invalid URLs", () => {
 test("returns null for URLs with extra path segments", () => {
   expect(parseGitHubRemote("https://github.com/owner/repo/tree/main")).toBeNull()
   expect(parseGitHubRemote("https://github.com/owner/repo/blob/main/file.ts")).toBeNull()
+})
+
+test("parses owner/repo values", () => {
+  expect(parseGitHubRepo("sst/opencode")).toEqual({ owner: "sst", repo: "opencode" })
+  expect(parseGitHubRepo("my-org/my-repo")).toEqual({ owner: "my-org", repo: "my-repo" })
+})
+
+test("returns null for invalid owner/repo values", () => {
+  expect(parseGitHubRepo("https://github.com/sst/opencode")).toBeNull()
+  expect(parseGitHubRepo("sst")).toBeNull()
+  expect(parseGitHubRepo("sst/opencode/main")).toBeNull()
+  expect(parseGitHubRepo("")).toBeNull()
 })
