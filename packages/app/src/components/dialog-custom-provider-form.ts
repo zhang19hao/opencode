@@ -88,11 +88,16 @@ export function validateCustomProvider(input: ValidateArgs) {
             seenModels.add(id)
             return undefined
           })()
-    const nameError = !m.name.trim() ? input.t("provider.custom.error.required") : undefined
-    return { id: idError, name: nameError }
+    return { id: idError, name: undefined }
   })
   const modelsValid = models.every((m) => !m.id && !m.name)
-  const modelConfig = Object.fromEntries(input.form.models.map((m) => [m.id.trim(), { name: m.name.trim() }]))
+  const modelConfig = Object.fromEntries(
+    input.form.models.map((m) => {
+      const id = m.id.trim()
+      const name = m.name.trim() || id
+      return [id, { name }]
+    }),
+  )
 
   const seenHeaders = new Set<string>()
   const headers = input.form.headers.map((h) => {

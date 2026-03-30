@@ -77,4 +77,25 @@ describe("validateCustomProvider", () => {
       value: undefined,
     })
   })
+
+  test("allows model name to be omitted", () => {
+    const result = validateCustomProvider({
+      form: {
+        providerID: "custom-provider",
+        name: "Provider",
+        baseURL: "https://api.example.com",
+        apiKey: "",
+        models: [{ row: "m0", id: "model-a", name: "", err: {} }],
+        headers: [{ row: "h0", key: "", value: "", err: {} }],
+        err: {},
+      },
+      t,
+      disabledProviders: [],
+      existingProviderIDs: new Set(),
+    })
+
+    expect(result.result?.config.models).toEqual({
+      "model-a": { name: "model-a" },
+    })
+  })
 })

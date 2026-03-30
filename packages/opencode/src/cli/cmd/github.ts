@@ -162,6 +162,12 @@ export function parseGitHubRemote(url: string): { owner: string; repo: string } 
   return { owner: match[1], repo: match[2] }
 }
 
+export function parseGitHubRepo(value: string): { owner: string; repo: string } | null {
+  const match = value.match(/^([^/\s]+)\/([^/\s]+)$/)
+  if (!match) return null
+  return { owner: match[1], repo: match[2] }
+}
+
 /**
  * Extracts displayable text from assistant response parts.
  * Returns null for non-text responses (signals summary needed).
@@ -457,7 +463,7 @@ export const GithubRunCommand = cmd({
       const runId = normalizeRunId()
       const share = normalizeShare()
       const oidcBaseUrl = normalizeOidcBaseUrl()
-      const { owner, repo } = context.repo
+      const { owner, repo } = normalizeRepo()
       // For repo events (schedule, workflow_dispatch), payload has no issue/comment data
       const payload = context.payload as
         | IssueCommentEvent
@@ -518,10 +524,10 @@ export const GithubRunCommand = cmd({
 
       try {
         if (useGithubToken) {
-          const githubToken = process.env["GITHUB_TOKEN"]
+          const githubToken = normalizeGithubToken()
           if (!githubToken) {
             throw new Error(
-              "GITHUB_TOKEN environment variable is not set. When using use_github_token, you must provide GITHUB_TOKEN.",
+              "GitHub token is not set. Set OPENCODE_GITHUB_TOKEN or GITHUB_TOKEN when use_github_token is enabled.",
             )
           }
           appToken = githubToken
@@ -535,9 +541,7 @@ export const GithubRunCommand = cmd({
         })
 
         const { userPrompt, promptFiles } = await getUserPrompt()
-        if (!useGithubToken) {
-          await configureGit(appToken)
-        }
+        await configureGit(appToken)
         // Skip permission check and reactions for repo events (no actor to check, no issue to react to)
         if (isUserEvent) {
           await assertPermissions()
@@ -693,10 +697,8 @@ export const GithubRunCommand = cmd({
         // Also output the clean error message for the action to capture
         //core.setOutput("prepare_error", e.message);
       } finally {
-        if (!useGithubToken) {
-          await restoreGitConfig()
-          await revokeAppToken()
-        }
+        await restoreGitConfig()
+        if (!useGithubToken) await revokeAppToken()
       }
       process.exit(exitCode)
 
@@ -727,10 +729,25 @@ export const GithubRunCommand = cmd({
 
       function normalizeUseGithubToken() {
         const value = process.env["USE_GITHUB_TOKEN"]
-        if (!value) return false
+        if (!value) return !!normalizeGithubToken()
         if (value === "true") return true
         if (value === "false") return false
         throw new Error(`Invalid use_github_token value: ${value}. Must be a boolean.`)
+      }
+
+      function normalizeGithubToken() {
+        return process.env["OPENCODE_GITHUB_TOKEN"] || process.env["GITHUB_TOKEN"]
+      }
+
+      function normalizeRepo() {
+        const value = process.env["OPENCODE_GITHUB_REPO"] || process.env["GITHUB_REPOSITORY"]
+        if (value) {
+          const parsed = parseGitHubRepo(value)
+          if (!parsed) throw new Error(`Invalid GitHub repo value: ${value}. Expected owner/repo.`)
+          return parsed
+        }
+        if (context.repo.owner && context.repo.repo) return context.repo
+        throw new Error(`GitHub repository is not set. Set OPENCODE_GITHUB_REPO or GITHUB_REPOSITORY.`)
       }
 
       function normalizeOidcBaseUrl(): string {
