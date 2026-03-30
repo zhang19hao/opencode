@@ -29,8 +29,8 @@ function getNetworkIPs() {
 }
 
 export const WebCommand = cmd({
-  command: "web",
-  builder: (yargs) => withNetworkOptions(yargs),
+  command: ["$0", "web"],
+  builder: (yargs) => withNetworkOptions(yargs).default("port", 9999),
   describe: "start opencode server and open web interface",
   handler: async (args) => {
     if (!Flag.OPENCODE_SERVER_PASSWORD) {
